@@ -1,52 +1,43 @@
 #include "knn.h"
 
 double euclidean_distance_no_sqrt(point_t a, point_t b) {
-    return ((b.x - a.x) * ((b.x - a.x))) + ((b.y - a.y) * (b.y - a.y));
+    return ((b.x - a.x) * (b.x - a.x)) + ((b.y - a.y) * (b.y - a.y));
 }
 
 int compare_label_for_sort(const void *a, const void *b) {
   return *(char*)a - *(char*)b;
 }
 
-char knn(point_list_t* points, point_t find, int k) {
-    long   x, y, z, size;
-    char   labels[k];
-    double distances[k];
+int compare_point_for_sort(const void *a, const void *b) {
+  return ((point_t *) a)->distance - ((point_t *) b)->distance;
+}
 
-    for (x = 0; x < k; x++) {
-        labels[x] = -1;
-        distances[x] = -1;
+void output_points(point_list_t * points) {
+    long x;
+    printf("Points: ");
+    for (x = 0; x < points->size; x++) {
+        printf(" (%lf, %lf, %c, %lf) ", points->list[x].x, points->list[x].y, points->list[x].label, points->list[x].distance);
     }
+    printf("\n");
+}
+
+char knn(point_list_t* points, point_t find, int k) {
+    long   x;
 
     for (x = 0; x < points->size; x++) {
-        point_t point = points->list[x];
-        double distance = euclidean_distance_no_sqrt(find, point);
-
-        for (y = 0; y < k; y++) {
-            if (distance < distances[y] || distances[y] == -1) {
-                for (z = k - 1; z > y; z--) {
-                    distances[z] = distances[z - 1];
-                    labels[z] = labels[z - 1];
-                }
-
-                distances[y] = distance;
-                labels[y] = point.label;
-
-                break;
-            }
-        }
+        points->list[x].distance  = euclidean_distance_no_sqrt(find, points->list[x]);
     }
 
-    qsort(labels, k, sizeof(char), compare_label_for_sort);
+    qsort(points->list, points->size, sizeof(point_t), compare_point_for_sort);
 
-    char most_frequent = labels[0];
+    char most_frequent = points->list[0].label;
     int most_frequent_count = 1;
     int current_frequency = 1;
 
     for (x = 1; x < k; x++) {
-        if (labels[x] != labels[x - 1]) {
+        if (points->list[x].label != points->list[x - 1].label) {
             if (current_frequency > most_frequent_count) {
-                most_frequent = labels[x - 1];
+                most_frequent = points->list[x - 1].label;
                 most_frequent_count = current_frequency;
             }
 
@@ -56,7 +47,7 @@ char knn(point_list_t* points, point_t find, int k) {
         }
 
         if (x == k - 1 && current_frequency > most_frequent_count) {
-            most_frequent = labels[x - 1];
+            most_frequent = points->list[x - 1].label;
             most_frequent_count = current_frequency;
         }
     }
