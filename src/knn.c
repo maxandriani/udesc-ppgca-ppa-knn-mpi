@@ -5,11 +5,11 @@ double euclidean_distance_no_sqrt(point_t a, point_t b) {
 }
 
 int compare_label_for_sort(const void *a, const void *b) {
-  return *(char*)a - *(char*)b;
+    return *(char*)a - *(char*)b;
 }
 
 int compare_point_for_sort(const void *a, const void *b) {
-  return ((point_t *) a)->distance - ((point_t *) b)->distance;
+    return ((point_t *) a)->distance - ((point_t *) b)->distance;
 }
 
 void output_points(point_list_t * points) {
@@ -21,20 +21,15 @@ void output_points(point_list_t * points) {
     printf("\n");
 }
 
-char knn(point_list_t* points, point_t find, int k) {
-    long   x;
-
-    for (x = 0; x < points->size; x++) {
-        points->list[x].distance  = euclidean_distance_no_sqrt(find, points->list[x]);
-    }
-
-    qsort(points->list, points->size, sizeof(point_t), compare_point_for_sort);
-
+char knn_most_frequent(point_list_t* points, int k) {
     char most_frequent = points->list[0].label;
     int most_frequent_count = 1;
     int current_frequency = 1;
 
-    for (x = 1; x < k; x++) {
+    for (int x = 1; x < k; x++) {
+        if (points->list[x].label == -1) {
+            continue; // Ignora lixo quando tem muito pouco dado...
+        }
         if (points->list[x].label != points->list[x - 1].label) {
             if (current_frequency > most_frequent_count) {
                 most_frequent = points->list[x - 1].label;
@@ -53,4 +48,14 @@ char knn(point_list_t* points, point_t find, int k) {
     }
 
     return most_frequent;
+}
+
+void knn_compute_distance(point_list_t* points, point_t find) {
+    for (int x = 0; x < points->size; x++) {
+        points->list[x].distance  = euclidean_distance_no_sqrt(find, points->list[x]);
+    }
+}
+
+void knn_sort_points(point_list_t * points) {
+    qsort(points->list, points->size, sizeof(point_t), compare_point_for_sort);
 }

@@ -46,6 +46,7 @@ input_t * parse_input(char filename[]) {
     
     input = (input_t *) malloc(sizeof(input_t));
     if (input == NULL) on_memory_error();
+    input->list.size = 0;
 
     file = fopen(filename, "r");
     if (file == NULL) on_file_open_error(filename);
