@@ -24,6 +24,7 @@ worker ->> mestre: Retorno das distâncias ordenadas limitadas por K.
 mestre ->> mestre: Comcatenação dos sub-conjuntos.
 mestre ->> mestre: Re-ordenação do conjunto.
 mestre ->> mestre: Corte de K vizinhos.
+mestre --> mestre: Ordenação dos labels.
 mestre ->> mestre: Computação de frequência.
 ```
 

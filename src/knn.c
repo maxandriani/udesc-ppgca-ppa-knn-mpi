@@ -5,10 +5,10 @@ double euclidean_distance_no_sqrt(point_t a, point_t b) {
 }
 
 int compare_label_for_sort(const void *a, const void *b) {
-    return *(char*)a - *(char*)b;
+    return ((point_t *) a)->label - ((point_t *) b)->label;
 }
 
-int compare_point_for_sort(const void *a, const void *b) {
+int compare_distance_for_sort(const void *a, const void *b) {
     return ((point_t *) a)->distance - ((point_t *) b)->distance;
 }
 
@@ -22,6 +22,7 @@ void output_points(point_list_t * points) {
 }
 
 char knn_most_frequent(point_list_t* points, int k) {
+    qsort(points->list, k, sizeof(point_t), compare_label_for_sort); // sort by label asc to count frequency
     char most_frequent = points->list[0].label;
     int most_frequent_count = 1;
     int current_frequency = 1;
@@ -54,5 +55,5 @@ void knn_compute_distance(point_list_t* points, point_t find) {
 }
 
 void knn_sort_points(point_list_t * points) {
-    qsort(points->list, points->size, sizeof(point_t), compare_point_for_sort);
+    qsort(points->list, points->size, sizeof(point_t), compare_distance_for_sort);
 }
