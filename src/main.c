@@ -27,6 +27,13 @@ int compute_gatter_pack_size() {
     return distance + label;
 }
 
+void print_points(int rank, point_list_t * points) {
+    for (long i = 0; i < points->size; i++) {
+        printf("Rank %d: (%c, %lf).\n", rank, points->list[i].label, points->list[i].distance);
+    }
+    printf("\n");
+}
+
 int main(int argc, char* argv[]) {
     int num_tasks, rank, points_per_job, k;
     long points_count;
@@ -111,15 +118,16 @@ int main(int argc, char* argv[]) {
     free(bcast_buffer);
 
     MPI_Scatter(scatter_send_buffer, points_per_job * scatter_pack_size, MPI_PACKED, scatter_recv_buffer, points_per_job * scatter_pack_size, MPI_PACKED, 0, MPI_COMM_WORLD);
-    job_points.list = (point_t *) malloc(sizeof(point_t) * k);
+    
+    if (rank == (num_tasks - 1)) {
+        points_per_job = points_count - (points_per_job * (num_tasks - 1)); // las thread displacement.
+    }
+
+    job_points.list = (point_t *) malloc(sizeof(point_t) * points_per_job);
     job_points.size = points_per_job;
     if (job_points.list == NULL) {
         printf("Rank %d: Error allocating memory for job_points.list.\n", rank);
         MPI_Abort(MPI_COMM_WORLD, 1);
-    }
-
-    if (rank == (num_tasks - 1)) {
-        points_per_job = points_count - (points_per_job * (num_tasks - 1)); // las thread displacement.
     }
 
     for (int i = 0; i < points_per_job; i++) {
@@ -128,7 +136,6 @@ int main(int argc, char* argv[]) {
         MPI_Unpack(scatter_recv_buffer + i * scatter_pack_size, scatter_pack_size, &scatter_unpack_position, &job_points.list[i].y, 1, MPI_DOUBLE, MPI_COMM_WORLD);
         MPI_Unpack(scatter_recv_buffer + i * scatter_pack_size, scatter_pack_size, &scatter_unpack_position, &job_points.list[i].label, 1, MPI_CHAR, MPI_COMM_WORLD);
     }
-    job_points.size = points_per_job;
     
     free(scatter_send_buffer);
     free(scatter_recv_buffer);
@@ -149,14 +156,17 @@ int main(int argc, char* argv[]) {
     }
 
     for (int i = 0; i < k; i++) {
-        if (i >= job_points.size) {
-            job_points.list[i].distance = DBL_MAX - 1;
-            job_points.list[i].label = -1;
+        char label = -1;
+        double distance = 0;
+
+        if (i < job_points.size) {
+            label = job_points.list[i].label;
+            distance = job_points.list[i].distance;
         }
 
         int gatter_send_position = 0;
-        MPI_Pack(&job_points.list[i].label, 1, MPI_CHAR, gatter_send_buffer + (i * gatter_pack_size), gatter_pack_size, &gatter_send_position, MPI_COMM_WORLD);
-        MPI_Pack(&job_points.list[i].distance, 1, MPI_DOUBLE, gatter_send_buffer + (i * gatter_pack_size), gatter_pack_size, &gatter_send_position, MPI_COMM_WORLD);
+        MPI_Pack(&label, 1, MPI_CHAR, gatter_send_buffer + (i * gatter_pack_size), gatter_pack_size, &gatter_send_position, MPI_COMM_WORLD);
+        MPI_Pack(&distance, 1, MPI_DOUBLE, gatter_send_buffer + (i * gatter_pack_size), gatter_pack_size, &gatter_send_position, MPI_COMM_WORLD);
     }
 
     free(job_points.list);
@@ -164,34 +174,33 @@ int main(int argc, char* argv[]) {
     MPI_Gather(gatter_send_buffer, k * gatter_pack_size, MPI_PACKED, gatter_recv_buffer, k * gatter_pack_size, MPI_PACKED, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
-        printf("Rank %d: Recv Gatter.\n", rank);
-
-        int buff_size;
-
-
-        if (points_per_job < k) {
-            buff_size = points_per_job * num_tasks;
-        } else {
-            buff_size = k * num_tasks;
-        }
-
-        neightbours.list = (point_t *) malloc(sizeof(point_t) * buff_size);
-        neightbours.size = buff_size;
+        neightbours.list = (point_t *) malloc(sizeof(point_t) * k * num_tasks);
+        neightbours.size = k * num_tasks;
 
         if (neightbours.list == NULL) {
             printf("Rank %d: Error allocating memory for neightbours.list.\n", rank);
             MPI_Abort(MPI_COMM_WORLD, 1);
         }
 
-        for (int i = 0; i < neightbours.size; i++) {
+        int length = 0;
+        for (int i = 0; i < k * num_tasks; i++) {
             int gatter_recv_position = 0;
-            MPI_Unpack(gatter_recv_buffer + i * gatter_pack_size, num_tasks * k * gatter_pack_size, &gatter_recv_position, &neightbours.list[i].label, 1, MPI_CHAR, MPI_COMM_WORLD);
-            MPI_Unpack(gatter_recv_buffer + i * gatter_pack_size, num_tasks * k * gatter_pack_size, &gatter_recv_position, &neightbours.list[i].distance, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+            char label;
+            double distance;
+            MPI_Unpack(gatter_recv_buffer + i * gatter_pack_size, gatter_pack_size, &gatter_recv_position, &label, 1, MPI_CHAR, MPI_COMM_WORLD);
+            MPI_Unpack(gatter_recv_buffer + i * gatter_pack_size, gatter_pack_size, &gatter_recv_position, &distance, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+            if (label > -1) {
+                neightbours.list[length].label = label;
+                neightbours.list[length].distance = distance;
+                length++;
+            }
         }
+        neightbours.size = length;
 
         knn_sort_points(&neightbours);
+        //print_points(rank, &neightbours);
         char result = knn_most_frequent(&neightbours, k);
-        printf("Result: %c", result);
+        printf("Result: %c.\n", result);
         free(neightbours.list);
     }
 

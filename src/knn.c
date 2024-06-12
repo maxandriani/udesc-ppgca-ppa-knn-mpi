@@ -27,9 +27,6 @@ char knn_most_frequent(point_list_t* points, int k) {
     int current_frequency = 1;
 
     for (int x = 1; x < k; x++) {
-        if (points->list[x].label == -1) {
-            continue; // Ignora lixo quando tem muito pouco dado...
-        }
         if (points->list[x].label != points->list[x - 1].label) {
             if (current_frequency > most_frequent_count) {
                 most_frequent = points->list[x - 1].label;
