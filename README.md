@@ -7,7 +7,7 @@ Conversão de programa KNN para uso de MPI e Openmp
 ### (1) Quais dados devem ser enviados pelo mestre?
 R. Optei pela estratégia de Scatter/Gattering, onde envio para todos os processos um sub-conjunto de pontos para computar, e no retorno, aguardo uma lista com as distâncias computadas e pré-ordenadas. No retorno estou recebendo apenas um sub-conjunto do chunk, limitado pelo tamanho de K (Não me interessa os dados mais distantes que K pois são matematicamente irrelevantes).
 
-Além do Scatter, também são enviados os parãmetros de classificação por Broadcast.
+Além do Scatter, também são enviados os parâmetros de classificação por Broadcast.
 
 ```mermaid
 sequenceDiagram
